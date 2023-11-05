@@ -3,12 +3,15 @@ from shapely.geometry import shape, Point
 import psycopg2
 import json
 from rtree import index
+import requests
+import zipfile
+import io
 import logging
 
 
 '''
 for db creds we would of course want to use a service or somthing for getting the credentials 
-for simplicity just hard coding them here
+for simplicity just hard coding them herea
 '''
 db_creds = {
     'host': '0.0.0.0',
@@ -19,8 +22,6 @@ db_creds = {
 }
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-input_file = '20231102181500.export.CSV' # just hard coding the input for simplicity
 
 
 def main():
@@ -35,16 +36,19 @@ def main():
         just stuck it here for simplicity
         """
         with open('create_ingested_records.sql', 'r') as f:
-            logger.info('creating ingested_records table')
+            logger.info('creating ingested_records table if not exists')
+            '''for demo just droping the table and recreating so no primary key errors
+               would need to handle them in the data or in the insert'''
             cur.execute('drop table if exists ingested_records;')
             conn.commit()
             cur.execute(f.read())
 
         """
-        get raw input data from file
+        get raw input data
         """
-        logger.info('getting raw data from file')
-        input_records = get_data(input_file)
+        logger.info('getting raw data')
+        raw_data = get_data()
+        input_records = = make_input_record_dict(raw_data)
 
         """
         get us county geometry data
@@ -121,45 +125,74 @@ def get_county_index(features):
     return idx
 
 
-def get_data(file):
+def get_data():
     """
-    this function is going to read the input file,
+    this function will download the data from the remote site
+    for simplicy just a simple get request, probably need somthing better here
+    """
+    url = 'http://data.gdeltproject.org/gdeltv2/lastupdate.txt'
+    return_data = None
+    
+    response = requests.get(url)
+    file_url = None
+    if response.status_code == 200:
+        for i in response.content.decode('utf-8').split('\n'):
+            if '.export.CSV' in i:
+                file_url = i.split(' ')[-1]     
+    #print(file_url)
+    
+    response2 = requests.get(file_url)
+    if response2.status_code == 200:
+        with zipfile.ZipFile(io.BytesIO(response2.content), 'r') as zipped_file:
+            file_info = zipped_file.infolist()[0]
+            byte_string = zipped_file.read(file_info.filename)
+            decoded_str = byte_string.decode('utf-8')
+            return_data = decoded_str   
+    
+    if not return_data:
+        raise Exception('ERROR: failed to get data from remote site')
+
+    return return_data
+
+
+def make_input_record_dict(raw_data):
+    """
+    this function is going to read the raw datae,
     get the columns of data we want,
     look up the event codes from the provided maps, setting the values to "unknown" if the code can't be mapped
     and return a list of dicts
     """
-    return_list = []
-    with open(file, 'r') as f:
-        for l in f.readlines():
-            row = l.split('\t')
-            try:
-                lat = float(row[56])
-                lng = float(row[57])
-            except ValueError:
-                # print(f'ValueError: bad geometry for GLOBALEVENTID {row[0]}: {row[56]}, {row[57]}')
-                continue
-            return_row_dict = {
-                'GLOBALEVENTID': row[0],
-                'SQLDATE': row[1],
-                'EventCode': row[26],
-                'EventBaseCode': row[27],
-                'EventRootCode': row[28],
-                'ActionGeo_FullName': row[52],
-                'ActionGeo_CountryCode': row[53],
-                'ActionGeo_Lat': row[56],
-                'ActionGeo_Long': row[57],
-                'DATEADDED': row[59],
-                'SOURCEURL': row[60],
-                'geom': Point([lng, lat])
-            }
-            '''
-            lookup events by code, set any bad codes or unknown codes to "unknown"
-            might want to reject these records? not sure
-            '''
-            return_row_dict['event'] = get_mapped_value(return_row_dict['EventCode'], event_codes)
-            return_row_dict['event_base'] = get_mapped_value(return_row_dict['EventBaseCode'], event_base_codes)
-            return_row_dict['event_root'] = get_mapped_value(return_row_dict['EventRootCode'], event_root_codes)
-            return_list.append(return_row_dict)
+    return_list = []:
+    for l in raw_data:
+        row = l.split('\t')
+        try:
+            lat = float(row[56])
+            lng = float(row[57])
+        except ValueError:
+            # print(f'ValueError: bad geometry for GLOBALEVENTID {row[0]}: {row[56]}, {row[57]}')
+            continue
+        return_row_dict = {
+            'GLOBALEVENTID': row[0],
+            'SQLDATE': row[1],
+            'EventCode': row[26],
+            'EventBaseCode': row[27],
+            'EventRootCode': row[28],
+            'ActionGeo_FullName': row[52],
+            'ActionGeo_CountryCode': row[53],
+            'ActionGeo_Lat': row[56],
+            'ActionGeo_Long': row[57],
+            'DATEADDED': row[59],
+            'SOURCEURL': row[60],
+            'geom': Point([lng, lat])
+        }
+        '''
+        lookup events by code, set any bad codes or unknown codes to "unknown"
+        might want to reject these records? not sure
+        '''
+        return_row_dict['event'] = get_mapped_value(return_row_dict['EventCode'], event_codes)
+        return_row_dict['event_base'] = get_mapped_value(return_row_dict['EventBaseCode'], event_base_codes)
+        return_row_dict['event_root'] = get_mapped_value(return_row_dict['EventRootCode'], event_root_codes)
+        return_list.append(return_row_dict)
 
     return return_list
 
