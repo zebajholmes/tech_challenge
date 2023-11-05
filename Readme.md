@@ -1,4 +1,5 @@
 <b>Overview</b>
+
 Simple example of a service to ingest data from: http://data.gdeltproject.org/gdeltv2/lastupdate.txt
 and load into a postgres table with postgis point geometry
 to see run:
