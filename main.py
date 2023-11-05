@@ -163,7 +163,7 @@ def make_input_record_dict(raw_data):
     and return a list of dicts
     """
     return_list = []
-    for l in raw_data:
+    for l in raw_data.split('\n'):
         row = l.split('\t')
         try:
             lat = float(row[56])
