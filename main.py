@@ -162,7 +162,7 @@ def make_input_record_dict(raw_data):
     look up the event codes from the provided maps, setting the values to "unknown" if the code can't be mapped
     and return a list of dicts
     """
-    return_list = []:
+    return_list = []
     for l in raw_data:
         row = l.split('\t')
         try:
