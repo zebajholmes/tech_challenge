@@ -7,10 +7,11 @@ to see run:
 docker built -t tech_challenge .
 docker run
 ```
-NOTE: no database is provide, you will need to provide one and update the db credentials in the code, docker image postgis/postgis can be used
+NOTE: no database is provide, you will need to provide one and update the db credentials in the code, docker image postgis/postgis:https://registry.hub.docker.com/r/postgis/postgis/ can be used
 
 
 <b>Considering the following:</b>
+
 
 <b>Question: How you might mature the data acquisition?</b>
 
@@ -22,6 +23,7 @@ NOTE: no database is provide, you will need to provide one and update the db cre
 
 -will need some testing
 
+
 <b>Question: Additional data preparation steps and data quality checks you may want to perform</b>
 
 -The date/timestamp data points should be validated, we may want to reject 
@@ -29,10 +31,12 @@ records with bad or impossible dates (future dates, dates out of time window, ec
 
 -probably want a whole module for checking the raw data
 
-Question: How you might approach triaging or otherwise remediating data with unresolved errors
+
+<b>Question: How you might approach triaging or otherwise remediating data with unresolved errors</b>
 
 -records rejected for errors or dirty data could be logged, they could also be loaded to a rejected table in the database, for later review and remediation.
 -might introduce logic to clean common issues. Maybe for example some multiple event codes could be normalized to a single event, don’t know enough about the data yet.
+
 
 <b>Question: How you might better stage the pipeline using data warehousing strategies</b>
 
@@ -43,11 +47,13 @@ for example: we may want the source columns in a separate table. We may want a l
 
 -Metadata, we may want more metadata on the batch, its source (we probably have other sources), may want to auditing tables or logs for load, ect.
 
+
 <b>Question: Performance considerations</b>
 
 -Bulk load into postgres may be appropriate for this source if we continue with batch processing
 
 -Also Streaming might be a better approach for this source, probably need a better connection to the database for inserting data, connection pool, prepared statement, ect.  Might want to use an ORM.
+
 
 <b>Question: How you might mature logging, alerting and notifications</b>
 
