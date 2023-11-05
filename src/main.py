@@ -100,7 +100,7 @@ def main():
                       values {','.join(output_insert_list)}"""
             # print(sql)
             logger.info(f'inserting {len(output_insert_list)} records into ingested_records table')
-            # cur.execute(sql)
+            cur.execute(sql)
             logger.info('db update complete')
 
 
