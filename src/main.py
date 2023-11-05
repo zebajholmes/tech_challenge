@@ -11,7 +11,7 @@ import logging
 
 '''
 for db creds we would of course want to use a service or somthing for getting the credentials 
-for simplicity just hard coding them herea
+for simplicity just hard coding them here
 '''
 db_creds = {
     'host': '0.0.0.0',
